@@ -1,0 +1,7 @@
+system:
+  bootc: true
+  dpu: false
+
+logging:
+  level: info
+  output: /var/log/greenlight.log
