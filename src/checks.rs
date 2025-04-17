@@ -18,7 +18,7 @@ impl CheckKind {
         use CheckKind::*;
 
         match self {
-            RootFsReadonly => true, // universally useful
+            RootFsReadonly => !matches!(deployment, System::Traditional { .. }), // Deployment level check, but not really useful in traditional deployments
 
             BootcStatusMatchesOsRelease => matches!(deployment, System::Bootc { .. }),
 
