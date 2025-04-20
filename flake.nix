@@ -72,6 +72,7 @@
               bacon
               pkgsMusl.gcc
               glibc
+              markdownlint-cli2
             ];
 
             env = {
