@@ -4,7 +4,7 @@
 //! tool designed for DPU and bootc-based systems. It supports YAML configuration
 //! for system-level checks and logging behavior.
 
-use crate::checks::CheckKind;
+use crate::checks::Check;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -58,6 +58,7 @@ pub enum Target {
     Edge,
 }
 
+/// System
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemArchitecture {
@@ -90,10 +91,10 @@ impl Default for Logging {
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Checks {
-    pub include: Vec<CheckKind>,
-    pub exclude: Vec<CheckKind>,
-    pub required: Vec<CheckKind>,
-    pub wanted: Vec<CheckKind>,
+    pub include: Vec<Check>,
+    pub exclude: Vec<Check>,
+    pub required: Vec<Check>,
+    pub wanted: Vec<Check>,
 }
 
 fn default_path() -> PathBuf {
