@@ -1,4 +1,8 @@
-# Justfile for bootc-dpu-check
+# Use the CONTAINER_CMD environment variable if set, otherwise default to podman
+container-cmd := env("CONTAINER_CMD", "podman")
+
+# Use the IMAGE environment variable if set, otherwise default to localhost/greenboot
+image := env("CONTAINER_IMAGE", "localhost/greenlight")
 
 # Build statically linked binary for Bootc image
 build:
@@ -14,14 +18,19 @@ test-bootc:
 
 # Build the Bootc container image
 cbuild:
-    podman build -t quay.io/samueldasilva/greenboot .
-# push the Bootc container image
+    {{container-cmd}} build -t {{image}} .
+
+# Push the Bootc container image
 cpush:
-    podman push -t quay.io/samueldasilva/greenboot
+    {{container-cmd}} push {{image}}
 
 # Run the container
 crun:
-    podman run --rm -it quay.io/samueldasilva/greenboot
+    {{container-cmd}} run --rm -it {{image}}
+
+# Generate and open host-side docs
+host-docs:
+    cargo doc --open
 
 # Full flow: test, build, containerize
-# all: test container-build
+all: test build cbuild
