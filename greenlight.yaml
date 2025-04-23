@@ -1,7 +1,7 @@
 system:
-  bootc: true
-  dpu: false
+  deployment: bootc
+  arch: aarch64
 
 logging:
-  level: info
-  output: /var/log/greenlight.log
+  kind: basic
+  level: debug
