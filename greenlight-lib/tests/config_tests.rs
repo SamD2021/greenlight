@@ -1,5 +1,5 @@
-use greenlight::checks::check::Check;
-use greenlight::config::*;
+use greenlight_lib::checks::check::Check;
+use greenlight_lib::config::*;
 use std::path::PathBuf;
 #[test]
 fn test_parse_bootc_config_defaults() {
