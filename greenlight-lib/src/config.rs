@@ -4,9 +4,13 @@
 //! tool designed for DPU and bootc-based systems. It supports YAML configuration
 //! for system-level checks and logging behavior.
 
-use crate::checks::Check;
+use crate::{checks::Check, errors::GreenlightError};
 use serde::Deserialize;
-use std::path::PathBuf;
+use serde_yaml::from_str;
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 /// Top-level Greenlight configuration.
 #[derive(Deserialize, Debug)]
@@ -21,6 +25,20 @@ pub struct Config {
     /// Optional
     #[serde(default)]
     pub checks: Checks,
+}
+impl Config {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, GreenlightError> {
+        let content = std::fs::read_to_string(path).map_err(GreenlightError::Io)?;
+        Self::from_str(&content)
+    }
+}
+
+impl FromStr for Config {
+    type Err = GreenlightError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        from_str(s).map_err(GreenlightError::ConfigParse)
+    }
 }
 
 /// System-related configuration flags.

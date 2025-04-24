@@ -100,11 +100,11 @@ fn test_parse_check_kinds() {
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
     assert_eq!(
         config.checks.include,
-        vec![Check::RootFsReadonly, Check::MicroShiftInstalled]
+        vec![Check::RootfsReadonly, Check::MicroshiftInstalled]
     );
     assert_eq!(config.checks.exclude, vec![Check::SwapDisabled]);
-    assert_eq!(config.checks.required, vec![Check::RootFsReadonly]);
-    assert_eq!(config.checks.wanted, vec![Check::MicroShiftInstalled]);
+    assert_eq!(config.checks.required, vec![Check::RootfsReadonly]);
+    assert_eq!(config.checks.wanted, vec![Check::MicroshiftInstalled]);
 }
 
 #[test]

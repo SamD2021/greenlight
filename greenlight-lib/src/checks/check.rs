@@ -1,15 +1,16 @@
 use crate::config::{System, Target};
+use clap::ValueEnum;
 use serde::Deserialize;
+use std::str::FromStr;
 
 /// These checks are mapped as Enums so we can design the checks as fully valid states.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[clap(rename_all = "snake_case")] // Ensures Clap matches Serde strings
 pub enum Check {
-    #[serde(rename = "rootfs_readonly")]
-    RootFsReadonly,
+    RootfsReadonly,
     BootcStatusMatchesOsRelease,
-    #[serde(rename = "microshift_installed")]
-    MicroShiftInstalled,
+    MicroshiftInstalled,
     ExpectedInterfacePresent,
     SwapDisabled,
     SshdRunning,
@@ -20,13 +21,28 @@ impl Check {
         use Check::*;
 
         match self {
-            RootFsReadonly => !matches!(deployment, System::Traditional { .. }), // Deployment level check, but not really useful in traditional deployments
+            RootfsReadonly => !matches!(deployment, System::Traditional { .. }), // Deployment level check, but not really useful in traditional deployments
 
             BootcStatusMatchesOsRelease => matches!(deployment, System::Bootc { .. }),
 
-            MicroShiftInstalled | ExpectedInterfacePresent | SwapDisabled | SshdRunning => {
+            MicroshiftInstalled | ExpectedInterfacePresent | SwapDisabled | SshdRunning => {
                 matches!(target, Target::DPU)
             }
+        }
+    }
+}
+
+impl FromStr for Check {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "rootfs_readonly" => Ok(Check::RootfsReadonly),
+            "bootc_status_matches_os_release" => Ok(Check::BootcStatusMatchesOsRelease),
+            "microshift_installed" => Ok(Check::MicroshiftInstalled),
+            "expected_interface_present" => Ok(Check::ExpectedInterfacePresent),
+            "swap_disabled" => Ok(Check::SwapDisabled),
+            "sshd_running" => Ok(Check::SshdRunning),
+            _ => Err(format!("Unknown check kind: {}", s)),
         }
     }
 }
