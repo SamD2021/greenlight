@@ -4,9 +4,13 @@ container-cmd := env("CONTAINER_CMD", "podman")
 # Use the IMAGE environment variable if set, otherwise default to localhost/greenboot
 image := env("CONTAINER_IMAGE", "localhost/greenlight")
 
+
 # Build statically linked binary for Bootc image
-build:
-    cargo build --release --target x86_64-unknown-linux-musl
+build target:
+    cargo build --release --target {{target}}
+
+cross-build target:
+    cross build --release --target {{target}}
 
 # Run normal tests
 test:
@@ -17,8 +21,8 @@ test-bootc:
     cargo test -- --ignored
 
 # Build the Bootc container image
-cbuild:
-    {{container-cmd}} build -t {{image}} .
+cbuild target:
+    {{container-cmd}} build -v $PWD/greenlight:/greenlight --build-arg BUILD_TARGET={{target}} -t {{image}} .
 
 # Push the Bootc container image
 cpush:
@@ -31,6 +35,3 @@ crun:
 # Generate and open host-side docs
 host-docs:
     cargo doc --open
-
-# Full flow: test, build, containerize
-all: test build cbuild
