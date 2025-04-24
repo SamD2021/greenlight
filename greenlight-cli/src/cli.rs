@@ -1,0 +1,68 @@
+use std::path::PathBuf;
+
+use clap::Parser;
+use greenlight_lib::checks::Check;
+#[derive(Parser, Debug)]
+pub struct Args {
+    #[arg(short, long, value_enum)]
+    pub checks: Option<Vec<Check>>,
+
+    #[arg(short = 'f', long, value_name = "FILE")]
+    pub config_path: Option<PathBuf>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_rootfs_readonly() {
+        let args = Args::parse_from(["greenlight", "--checks", "rootfs_readonly"]);
+        assert_eq!(args.checks, Some(vec![Check::RootfsReadonly]));
+    }
+
+    #[test]
+    fn test_check_multiple() {
+        let args = Args::parse_from([
+            "greenlight",
+            "--checks",
+            "rootfs_readonly",
+            "--checks",
+            "sshd_running",
+        ]);
+        assert_eq!(
+            args.checks,
+            Some(vec![Check::RootfsReadonly, Check::SshdRunning])
+        );
+    }
+
+    #[test]
+    fn test_check_microshift_installed() {
+        let args = Args::parse_from(["greenlight", "--checks", "microshift_installed"]);
+        assert_eq!(args.checks, Some(vec![Check::MicroshiftInstalled]));
+    }
+
+    #[test]
+    fn test_check_sshd_running() {
+        let args = Args::parse_from(["greenlight", "--checks", "sshd_running"]);
+        assert_eq!(args.checks, Some(vec![Check::SshdRunning]));
+    }
+
+    #[test]
+    fn test_check_swap_disabled() {
+        let args = Args::parse_from(["greenlight", "--checks", "swap_disabled"]);
+        assert_eq!(args.checks, Some(vec![Check::SwapDisabled]));
+    }
+
+    #[test]
+    fn test_check_expected_interface_present() {
+        let args = Args::parse_from(["greenlight", "--checks", "expected_interface_present"]);
+        assert_eq!(args.checks, Some(vec![Check::ExpectedInterfacePresent]));
+    }
+
+    #[test]
+    fn test_check_bootc_status_matches_os_release() {
+        let args = Args::parse_from(["greenlight", "--checks", "bootc_status_matches_os_release"]);
+        assert_eq!(args.checks, Some(vec![Check::BootcStatusMatchesOsRelease]));
+    }
+}
