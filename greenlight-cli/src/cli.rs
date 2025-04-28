@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use greenlight_lib::checks::Check;
+use greenlight_lib::{
+    checks::Check,
+    config::{SystemArchitecture, Target},
+};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -12,6 +15,22 @@ pub struct Args {
 
     #[arg(short = 'f', long, value_name = "FILE")]
     pub config_path: Option<PathBuf>,
+    #[arg(short, long, value_enum)]
+    pub deployment: Option<Deployment>,
+    #[arg(short, long, value_enum)]
+    pub target: Option<Target>,
+    #[arg(short, long, value_enum)]
+    pub arch: Option<SystemArchitecture>,
+}
+
+use clap::ValueEnum;
+
+#[derive(Debug, Clone, ValueEnum)]
+#[clap(rename_all = "snake_case")]
+pub enum Deployment {
+    Bootc,
+    Ostree,
+    Traditional,
 }
 
 #[cfg(test)]
