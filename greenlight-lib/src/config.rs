@@ -7,6 +7,7 @@
 use crate::{checks::Check, errors::GreenlightError};
 use serde::Deserialize;
 use serde_yaml::from_str;
+use std::collections::HashSet;
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
@@ -74,6 +75,24 @@ pub enum Target {
     Automotive,
     #[default]
     Edge,
+}
+impl Target {
+    pub fn default_checks(&self) -> HashSet<Check> {
+        match self {
+            Target::Edge => HashSet::from([Check::RootfsReadonly]),
+            Target::DPU => HashSet::from([
+                Check::RootfsReadonly,
+                Check::MicroshiftInstalled,
+                Check::ExpectedInterfacePresent,
+                Check::SwapDisabled,
+                Check::SshdRunning,
+            ]),
+            Target::Automotive => HashSet::from([
+                Check::RootfsReadonly,
+                // Maybe more later
+            ]),
+        }
+    }
 }
 
 /// System
