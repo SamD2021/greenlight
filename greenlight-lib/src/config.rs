@@ -47,7 +47,7 @@ impl FromStr for Config {
 /// take we get for example (deployment: bootc) and we can safeguard the config at the type
 /// level.
 /// Now we can make sure "Image Mode" deployments only has access to its own configuration
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "deployment", rename_all = "snake_case")]
 pub enum System {
     Bootc {
@@ -67,8 +67,18 @@ pub enum System {
     },
 }
 
+impl System {
+    pub fn target(&self) -> &Target {
+        match self {
+            System::Bootc { target, .. } => target,
+            System::Ostree { target, .. } => target,
+            System::Traditional { target, .. } => target,
+        }
+    }
+}
+
 /// System-related configuration flags.
-#[derive(Debug, Deserialize, Default, PartialEq)]
+#[derive(Debug, Deserialize, Default, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Target {
     DPU,
@@ -96,7 +106,7 @@ impl Target {
 }
 
 /// System
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemArchitecture {
     X86,
@@ -128,10 +138,10 @@ impl Default for Logging {
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Checks {
-    pub include: Vec<Check>,
-    pub exclude: Vec<Check>,
-    pub required: Vec<Check>,
-    pub wanted: Vec<Check>,
+    pub include: Option<Vec<Check>>,
+    pub exclude: Option<Vec<Check>>,
+    pub required: Option<Vec<Check>>,
+    pub wanted: Option<Vec<Check>>,
 }
 
 fn default_path() -> PathBuf {
