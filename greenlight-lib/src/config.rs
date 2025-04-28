@@ -5,6 +5,7 @@
 //! for system-level checks and logging behavior.
 
 use crate::{checks::Check, errors::GreenlightError};
+use clap::ValueEnum;
 use serde::Deserialize;
 use serde_yaml::from_str;
 use std::collections::HashSet;
@@ -78,7 +79,7 @@ impl System {
 }
 
 /// System-related configuration flags.
-#[derive(Debug, Deserialize, Default, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Default, PartialEq, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Target {
     DPU,
@@ -106,7 +107,7 @@ impl Target {
 }
 
 /// System
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Clone, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemArchitecture {
     X86,
