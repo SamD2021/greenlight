@@ -2,7 +2,7 @@ mod cli;
 use clap::Parser;
 use cli::Args;
 use greenlight_lib::{config::Config, errors::GreenlightError};
-use std::{path::PathBuf, process::ExitCode};
+use std::{collections::HashSet, path::PathBuf, process::ExitCode};
 fn main() -> Result<ExitCode, GreenlightError> {
     let args = Args::parse();
     let config_path = match args.config_path {
@@ -11,12 +11,15 @@ fn main() -> Result<ExitCode, GreenlightError> {
     };
     let config: Config = Config::from_path(&config_path)?;
 
-    let Some(checks) = args.checks else {
-        let Some(checks) = config.checks else {
-            return Err(GreenlightError::NoChecksProvided);
-        };
-        checks
-    };
+    let included_checks = args
+        .include_checks
+        .or_else(|| config.checks.include.clone()) // clone because Option<Vec> needs to be moved
+        .unwrap_or_default();
+
+    let excluded_checks = args
+        .exclude_checks
+        .or_else(|| config.checks.exclude.clone())
+        .unwrap_or_default();
 
     Ok(ExitCode::SUCCESS)
 }
