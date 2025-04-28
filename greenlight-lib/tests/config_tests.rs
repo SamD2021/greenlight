@@ -1,13 +1,14 @@
 use greenlight_lib::checks::check::Check;
 use greenlight_lib::config::*;
 use std::path::PathBuf;
+
 #[test]
 fn test_parse_bootc_config_defaults() {
     let yaml = r#"
-            system:
-              deployment: bootc
-              arch: aarch64
-        "#;
+        system:
+          deployment: bootc
+          arch: aarch64
+    "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
     match config.system {
@@ -22,10 +23,10 @@ fn test_parse_bootc_config_defaults() {
 #[test]
 fn test_parse_ostree_config_defaults() {
     let yaml = r#"
-            system:
-              deployment: ostree
-              arch: aarch64
-        "#;
+        system:
+          deployment: ostree
+          arch: aarch64
+    "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
     match config.system {
@@ -40,11 +41,11 @@ fn test_parse_ostree_config_defaults() {
 #[test]
 fn test_parse_bootc_with_target() {
     let yaml = r#"
-            system:
-              deployment: bootc
-              arch: x86
-              target: dpu
-        "#;
+        system:
+          deployment: bootc
+          arch: x86
+          target: dpu
+    "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
     match config.system {
@@ -59,14 +60,14 @@ fn test_parse_bootc_with_target() {
 #[test]
 fn test_parse_logging_basic() {
     let yaml = r#"
-            system:
-              deployment: bootc
-              arch: x86
-              target: edge
-            logging:
-              kind: basic
-              level: debug
-        "#;
+        system:
+          deployment: bootc
+          arch: x86
+          target: edge
+        logging:
+          kind: basic
+          level: debug
+    "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
     match config.logging {
@@ -81,43 +82,45 @@ fn test_parse_logging_basic() {
 #[test]
 fn test_parse_check_kinds() {
     let yaml = r#"
-            system:
-              deployment: bootc
-              target: edge
-              arch: aarch64
-            checks:
-              include:
-                - rootfs_readonly
-                - microshift_installed
-              exclude:
-                - swap_disabled
-              required:
-                - rootfs_readonly
-              wanted:
-                - microshift_installed
-        "#;
+        system:
+          deployment: bootc
+          target: edge
+          arch: aarch64
+        checks:
+          include:
+            - rootfs_readonly
+            - microshift_installed
+          exclude:
+            - swap_disabled
+          required:
+            - rootfs_readonly
+          wanted:
+            - microshift_installed
+    "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
+    let checks = config.checks;
+
     assert_eq!(
-        config.checks.include,
+        checks.include.unwrap(),
         vec![Check::RootfsReadonly, Check::MicroshiftInstalled]
     );
-    assert_eq!(config.checks.exclude, vec![Check::SwapDisabled]);
-    assert_eq!(config.checks.required, vec![Check::RootfsReadonly]);
-    assert_eq!(config.checks.wanted, vec![Check::MicroshiftInstalled]);
+    assert_eq!(checks.exclude.unwrap(), vec![Check::SwapDisabled]);
+    assert_eq!(checks.required.unwrap(), vec![Check::RootfsReadonly]);
+    assert_eq!(checks.wanted.unwrap(), vec![Check::MicroshiftInstalled]);
 }
 
 #[test]
 fn test_invalid_check_kind() {
     let yaml = r#"
-            system:
-              deployment: bootc
-              arch: aarch64
-              target: edge
-            checks:
-              include:
-                - invalid_check
-        "#;
+        system:
+          deployment: bootc
+          arch: aarch64
+          target: edge
+        checks:
+          include:
+            - invalid_check
+    "#;
 
     let result: Result<Config, _> = serde_yaml::from_str(yaml);
     assert!(result.is_err(), "Invalid check kind should fail");
