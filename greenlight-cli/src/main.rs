@@ -3,7 +3,7 @@ use clap::Parser;
 use cli::Args;
 use greenlight_lib::{checks::Check, config::Config, errors::GreenlightError};
 use std::{collections::HashSet, path::PathBuf, process::ExitCode};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::fmt;
 fn main() -> Result<ExitCode, GreenlightError> {
     fmt::init(); // Setup logging once!
@@ -37,6 +37,26 @@ fn main() -> Result<ExitCode, GreenlightError> {
         .cloned()
         .collect();
     debug!("Total checks ({}): {:?} ", total_checks.len(), total_checks);
+    for check in total_checks {
+        info!("Running check: {:?}", check);
+        match check.run() {
+            Ok(passed) => {
+                if passed {
+                    info!("✅ Check passed: {:?}", check);
+                } else {
+                    error!("❌ Check failed: {:?}", check);
+                    return Err(GreenlightError::CheckFailed(format!(
+                        "{:?} did not pass validation",
+                        check
+                    )));
+                }
+            }
+            Err(check_error) => {
+                error!("❌ Check execution error: {:?}", check_error);
+                return Err(check_error);
+            }
+        }
+    }
 
     Ok(ExitCode::SUCCESS)
 }
