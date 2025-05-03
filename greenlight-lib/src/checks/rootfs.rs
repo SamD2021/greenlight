@@ -1,4 +1,5 @@
 use std::path::Path;
+use tracing::debug;
 
 use nix::sys::statvfs::{statvfs, FsFlags};
 
@@ -6,7 +7,12 @@ use crate::errors::GreenlightError;
 
 pub fn is_rootfs_readonly() -> Result<bool, GreenlightError> {
     match statvfs(Path::new("/")) {
-        Ok(state) => Ok(state.flags().contains(FsFlags::ST_RDONLY)),
+        Ok(state) => {
+            debug!("Rootfs flags: {:?}", state.flags());
+            let is_readonly = state.flags().contains(FsFlags::ST_RDONLY);
+            debug!("Is rootfs readonly? {}", is_readonly);
+            Ok(is_readonly)
+        }
         Err(error) => Err(GreenlightError::CheckFailed(error.to_string())),
     }
 }
