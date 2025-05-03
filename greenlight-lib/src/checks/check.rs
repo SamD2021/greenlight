@@ -1,7 +1,12 @@
-use crate::config::{System, Target};
+use crate::{
+    config::{System, Target},
+    errors::GreenlightError,
+};
 use clap::ValueEnum;
 use serde::Deserialize;
 use std::str::FromStr;
+
+use crate::checks::rootfs::is_rootfs_readonly;
 
 /// These checks are mapped as Enums so we can design the checks as fully valid states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, ValueEnum)]
@@ -28,6 +33,12 @@ impl Check {
             MicroshiftInstalled | ExpectedInterfacePresent | SwapDisabled | SshdRunning => {
                 matches!(target, Target::DPU)
             }
+        }
+    }
+    pub fn run(&self) -> Result<bool, GreenlightError> {
+        match self {
+            Check::RootfsReadonly => Ok(is_rootfs_readonly()?),
+            _ => Err(GreenlightError::UnsupportedDeployment),
         }
     }
 }
