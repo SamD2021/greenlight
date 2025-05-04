@@ -8,6 +8,8 @@ use std::str::FromStr;
 
 use crate::checks::rootfs::is_rootfs_readonly;
 
+use super::services::is_sshd_running;
+
 /// These checks are mapped as Enums so we can design the checks as fully valid states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, ValueEnum)]
 #[serde(rename_all = "snake_case")]
@@ -38,6 +40,7 @@ impl Check {
     pub fn run(&self) -> Result<bool, GreenlightError> {
         match self {
             Check::RootfsReadonly => Ok(is_rootfs_readonly()?),
+            Check::SshdRunning => Ok(is_sshd_running()?),
             _ => Err(GreenlightError::UnsupportedDeployment),
         }
     }

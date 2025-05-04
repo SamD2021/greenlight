@@ -1,5 +1,6 @@
 use std::io;
 use thiserror::Error;
+use zbus::Error as ZbusError;
 
 #[derive(Error, Debug)]
 pub enum GreenlightError {
@@ -8,6 +9,9 @@ pub enum GreenlightError {
 
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("DBus error: {0}")]
+    Dbus(#[from] ZbusError), // <-- add this
 
     #[error("Check failed: {0}")]
     CheckFailed(String),
