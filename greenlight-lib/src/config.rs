@@ -24,10 +24,18 @@ pub struct Config {
     #[serde(default)]
     pub logging: Logging,
 
-    /// Optional
     #[serde(default)]
-    pub checks: Checks,
+    pub required: CheckSet,
+
+    #[serde(default)]
+    pub wanted: CheckSet,
 }
+
+#[derive(Debug, Deserialize, Default)]
+pub struct CheckSet {
+    pub checks: Vec<Check>,
+}
+
 impl Config {
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self, GreenlightError> {
         let content = std::fs::read_to_string(path).map_err(GreenlightError::Io)?;
@@ -96,7 +104,6 @@ impl Target {
                 Check::MicroshiftInstalled,
                 Check::ExpectedInterfacePresent,
                 Check::SwapDisabled,
-                Check::SshdRunning,
             ]),
             Target::Automotive => HashSet::from([
                 Check::RootfsReadonly,
@@ -135,14 +142,6 @@ impl Default for Logging {
             output: default_path(),
         }
     }
-}
-
-#[derive(Deserialize, Debug, Default)]
-pub struct Checks {
-    pub include: Option<Vec<Check>>,
-    pub exclude: Option<Vec<Check>>,
-    pub required: Option<Vec<Check>>,
-    pub wanted: Option<Vec<Check>>,
 }
 
 fn default_path() -> PathBuf {

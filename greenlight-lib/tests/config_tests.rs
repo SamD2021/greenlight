@@ -86,28 +86,22 @@ fn test_parse_check_kinds() {
           deployment: bootc
           target: edge
           arch: aarch64
-        checks:
-          include:
-            - rootfs_readonly
-            - microshift_installed
-          exclude:
-            - swap_disabled
-          required:
-            - rootfs_readonly
-          wanted:
-            - microshift_installed
+        required:
+          checks:
+            - type: rootfs_readonly
+            - type: microshift_installed
+        wanted:
+          checks:
+            - type: expected_interface_present
     "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
-    let checks = config.checks;
 
     assert_eq!(
-        checks.include.unwrap(),
+        config.required.checks,
         vec![Check::RootfsReadonly, Check::MicroshiftInstalled]
     );
-    assert_eq!(checks.exclude.unwrap(), vec![Check::SwapDisabled]);
-    assert_eq!(checks.required.unwrap(), vec![Check::RootfsReadonly]);
-    assert_eq!(checks.wanted.unwrap(), vec![Check::MicroshiftInstalled]);
+    assert_eq!(config.wanted.checks, vec![Check::ExpectedInterfacePresent]);
 }
 
 #[test]
@@ -117,9 +111,9 @@ fn test_invalid_check_kind() {
           deployment: bootc
           arch: aarch64
           target: edge
-        checks:
-          include:
-            - invalid_check
+        required:
+          checks:
+            - type: invalid_check
     "#;
 
     let result: Result<Config, _> = serde_yaml::from_str(yaml);

@@ -2,61 +2,72 @@ use crate::{
     config::{System, Target},
     errors::GreenlightError,
 };
-use clap::ValueEnum;
 use serde::Deserialize;
-use std::str::FromStr;
+use systemd_zbus::ActiveState;
 
 use crate::checks::rootfs::is_rootfs_readonly;
+use crate::checks::unit::get_unit_state;
 
-use super::services::is_sshd_running;
-
-/// These checks are mapped as Enums so we can design the checks as fully valid states.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, ValueEnum)]
-#[serde(rename_all = "snake_case")]
-#[clap(rename_all = "snake_case")] // Ensures Clap matches Serde strings
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Check {
     RootfsReadonly,
     BootcStatusMatchesOsRelease,
     MicroshiftInstalled,
     ExpectedInterfacePresent,
     SwapDisabled,
-    SshdRunning,
+    UnitState {
+        unit: String,
+        expected: ExpectedActiveState,
+    },
 }
-
 impl Check {
     pub fn applies_to(&self, deployment: &System, target: &Target) -> bool {
         use Check::*;
-
         match self {
-            RootfsReadonly => !matches!(deployment, System::Traditional { .. }), // Deployment level check, but not really useful in traditional deployments
-
+            RootfsReadonly => !matches!(deployment, System::Traditional { .. }),
             BootcStatusMatchesOsRelease => matches!(deployment, System::Bootc { .. }),
-
-            MicroshiftInstalled | ExpectedInterfacePresent | SwapDisabled | SshdRunning => {
+            MicroshiftInstalled | ExpectedInterfacePresent | SwapDisabled | UnitState { .. } => {
                 matches!(target, Target::DPU)
             }
         }
     }
+
     pub fn run(&self) -> Result<bool, GreenlightError> {
         match self {
             Check::RootfsReadonly => Ok(is_rootfs_readonly()?),
-            Check::SshdRunning => Ok(is_sshd_running()?),
+
+            Check::UnitState {
+                unit: service,
+                expected,
+            } => {
+                let actual = get_unit_state(service)?; // returns ActiveState
+                Ok(actual == expected.clone().into())
+            }
+
             _ => Err(GreenlightError::UnsupportedDeployment),
         }
     }
 }
 
-impl FromStr for Check {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "rootfs_readonly" => Ok(Check::RootfsReadonly),
-            "bootc_status_matches_os_release" => Ok(Check::BootcStatusMatchesOsRelease),
-            "microshift_installed" => Ok(Check::MicroshiftInstalled),
-            "expected_interface_present" => Ok(Check::ExpectedInterfacePresent),
-            "swap_disabled" => Ok(Check::SwapDisabled),
-            "sshd_running" => Ok(Check::SshdRunning),
-            _ => Err(format!("Unknown check kind: {}", s)),
+#[derive(Debug, Clone, PartialEq, Deserialize, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum ExpectedActiveState {
+    Active,
+    Inactive,
+    Failed,
+    Activating,
+    Deactivating,
+}
+
+impl From<ExpectedActiveState> for ActiveState {
+    fn from(e: ExpectedActiveState) -> Self {
+        match e {
+            ExpectedActiveState::Active => ActiveState::Active,
+            ExpectedActiveState::Inactive => ActiveState::Inactive,
+            ExpectedActiveState::Failed => ActiveState::Failed,
+            ExpectedActiveState::Activating => ActiveState::Activating,
+            ExpectedActiveState::Deactivating => ActiveState::Deactivating,
         }
     }
 }

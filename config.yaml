@@ -5,3 +5,12 @@ system:
 logging:
   kind: basic
   level: debug
+
+wanted:
+  checks:
+    - type: rootfs_readonly
+required:
+  checks:
+    - type: service_state
+      service: sshd.service
+      expected: active
