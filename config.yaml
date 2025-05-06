@@ -11,6 +11,6 @@ wanted:
     - type: rootfs_readonly
 required:
   checks:
-    - type: service_state
-      service: sshd.service
+    - type: unit_state
+      unit: sshd.service
       expected: active
