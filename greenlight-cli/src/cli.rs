@@ -17,7 +17,7 @@ pub struct Args {
     pub only: Importance,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum, PartialEq)]
 #[clap(rename_all = "lowercase")]
 pub enum Importance {
     Required,
