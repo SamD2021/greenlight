@@ -31,14 +31,21 @@ fn main() -> Result<ExitCode, GreenlightError> {
         check_map.insert(check, Importance::Required); // Overwrites wanted
     }
 
-    let checks_to_run: Vec<(Check, Importance)> = check_map.into_iter().collect();
+    // Filter checks based on the `--only` argument
+    let checks_to_run: Vec<(Check, Importance)> = check_map
+        .into_iter()
+        .filter(|(_, importance)| match args.only {
+            Importance::All => true,
+            _ => *importance == args.only,
+        })
+        .collect();
     debug!(
         "Total checks to run ({}): {:?}",
         checks_to_run.len(),
         checks_to_run
     );
 
-    let exit_code = ExitCode::SUCCESS;
+    let mut any_wanted_failed = false;
 
     for (check, importance) in checks_to_run {
         info!("Running check: {:?}", check);
@@ -54,7 +61,7 @@ fn main() -> Result<ExitCode, GreenlightError> {
                 }
                 Importance::Wanted => {
                     error!("⚠️  Wanted check failed: {:?}", check);
-                    // Continue
+                    any_wanted_failed = true;
                 }
                 Importance::All => unreachable!(),
             },
@@ -65,5 +72,12 @@ fn main() -> Result<ExitCode, GreenlightError> {
         }
     }
 
-    Ok(exit_code)
+    // Fail at the end only if a wanted check failed and we didn't already return
+    if any_wanted_failed {
+        return Err(GreenlightError::CheckFailed(
+            "At least one wanted check failed".to_string(),
+        ));
+    }
+
+    Ok(ExitCode::SUCCESS)
 }
