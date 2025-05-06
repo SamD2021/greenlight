@@ -7,6 +7,7 @@ use systemd_zbus::ActiveState;
 
 use crate::checks::rootfs::is_rootfs_readonly;
 use crate::checks::unit::get_unit_state;
+use std::fs::read_to_string;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -44,6 +45,7 @@ impl Check {
                 let actual = get_unit_state(service)?; // returns ActiveState
                 Ok(actual == expected.clone().into())
             }
+            Check::SwapDisabled => Ok(is_swap_off()?),
 
             _ => Err(GreenlightError::UnsupportedDeployment),
         }
@@ -70,4 +72,11 @@ impl From<ExpectedActiveState> for ActiveState {
             ExpectedActiveState::Deactivating => ActiveState::Deactivating,
         }
     }
+}
+
+pub fn is_swap_off() -> Result<bool, GreenlightError> {
+    let content = read_to_string("/proc/swaps")?;
+    let mut lines = content.lines();
+    lines.next();
+    Ok(lines.next().is_none())
 }

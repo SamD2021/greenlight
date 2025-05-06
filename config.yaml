@@ -9,8 +9,6 @@ logging:
 wanted:
   checks:
     - type: rootfs_readonly
+    - type: swap_disabled
 required:
   checks:
-    - type: unit_state
-      unit: sshd.service
-      expected: active
