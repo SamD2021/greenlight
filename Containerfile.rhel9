@@ -1,0 +1,71 @@
+FROM registry.redhat.io/openshift4/microshift-bootc-rhel9:99c940abcf60ef5fec9571c36132ab07984372d4af683e5429cfa3b195757d8e
+
+
+ARG SSH_KEY
+ARG USER_PASSWD
+RUN if [ -z "${USER_PASSWD}" ] ; then \
+        echo USER_PASSWD is a mandatory build argument && exit 1 ; \
+    fi
+# hadolint ignore=DL4006
+RUN useradd -m -d /var/home/redhat -G wheel redhat && \
+    echo "redhat:${USER_PASSWD}" | chpasswd && mkdir -p /var/home/redhat/.ssh && echo "${SSH_KEY}" >> /var/home/redhat/.ssh/authorized_keys
+
+
+COPY target/x86_64-unknown-linux-musl/release/greenlight-cli /usr/bin/greenlight
+RUN mkdir -p /etc/greenlight/
+COPY config.yaml /etc/greenlight/
+
+# Permissions and symlinks (optional based on your needs)
+RUN chmod +x /usr/bin/greenlight 
+
+RUN cat > /usr/lib/systemd/system/greenlight-required.service <<'EOF'
+[Unit]
+Description=Custom Required Health Check
+After=multi-user.target
+Before=boot-complete.target
+OnFailure=redboot.target
+OnFailureJobMode=fail
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/greenlight --only required
+
+[Install]
+RequiredBy=boot-complete.target
+WantedBy=multi-user.target
+EOF
+
+RUN systemctl enable greenlight-required
+
+RUN cat > /usr/lib/systemd/system/greenlight-wanted.service <<'EOF'
+[Unit]
+Description=Custom Wanted Health Check
+After=multi-user.target
+Before=boot-complete.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/greenlight --only wanted
+
+[Install]
+WantedBy=boot-complete.target
+WantedBy=multi-user.target
+EOF
+
+RUN systemctl enable greenlight-wanted
+
+RUN mkdir -p /etc/systemd/system/dev-zram0.swap && \
+    ln -sf /dev/null /etc/systemd/system/dev-zram0.swap &&\
+    ln -sf /dev/null /etc/systemd/system/swap.target 
+
+RUN mkdir -p /usr/lib/systemd/system/ovsdb-server.service.d && \
+    cat > /usr/lib/systemd/system/ovsdb-server.service.d/microshift-ovsdb-ownership.conf <<'EOF'
+# The openvswitch database files must be owned by the appropriate user and its
+# primary group. Note that the user and its group may be overwritten too, so
+# they need to be recreated in this case.
+[Service]
+ExecStartPre=/bin/sh -c '/bin/getent passwd openvswitch >/dev/null || useradd -r openvswitch'
+ExecStartPre=/bin/sh -c '/bin/getent group hugetlbfs >/dev/null || groupadd -r hugetlbfs'
+ExecStartPre=/sbin/usermod -a -G hugetlbfs openvswitch
+ExecStartPre=/bin/chown -Rhv openvswitch. /etc/openvswitch
+EOF
