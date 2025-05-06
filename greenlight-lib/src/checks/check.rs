@@ -1,7 +1,4 @@
-use crate::{
-    config::{System, Target},
-    errors::GreenlightError,
-};
+use crate::errors::GreenlightError;
 use serde::Deserialize;
 use systemd_zbus::ActiveState;
 
@@ -23,17 +20,6 @@ pub enum Check {
     },
 }
 impl Check {
-    pub fn applies_to(&self, deployment: &System, target: &Target) -> bool {
-        use Check::*;
-        match self {
-            RootfsReadonly => !matches!(deployment, System::Traditional { .. }),
-            BootcStatusMatchesOsRelease => matches!(deployment, System::Bootc { .. }),
-            MicroshiftInstalled | ExpectedInterfacePresent | SwapDisabled | UnitState { .. } => {
-                matches!(target, Target::DPU)
-            }
-        }
-    }
-
     pub fn run(&self) -> Result<bool, GreenlightError> {
         match self {
             Check::RootfsReadonly => Ok(is_rootfs_readonly()?),
