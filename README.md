@@ -23,16 +23,19 @@ Example `greenlight.yaml`:
 system:
   deployment: bootc
   arch: aarch64
-  target: dpu
 
 logging:
   kind: basic
-  level: info
+  level: debug
 
-checks:
-  include:
-    - rootfs_readonly
-    - microshift_installed
+wanted:
+  checks:
+    - type: rootfs_readonly
+required:
+  checks:
+    - type: unit_state
+      unit: sshd.service
+      expected: active
 ```
 
 ---
@@ -64,7 +67,6 @@ greenlight/
 | `microshift_installed`       | Only `dpu` target           | ❌ Not implemented |
 | `expected_interface_present` | Only `dpu` target           | ❌ Not implemented |
 | `swap_disabled`              | Only `dpu` target           | ❌ Not implemented |
-| `sshd_running`               | Only `dpu` target           | ❌ Not implemented |
 
 ---
 
