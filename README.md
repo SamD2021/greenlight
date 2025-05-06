@@ -31,10 +31,14 @@ logging:
 wanted:
   checks:
     - type: rootfs_readonly
+    - type: swap_disabled
 required:
   checks:
     - type: unit_state
       unit: sshd.service
+      expected: active
+    - type: unit_state
+      unit: microshift.service
       expected: active
 ```
 
@@ -60,13 +64,13 @@ greenlight/
 
 ## ✅ Available Checks
 
-| Check Kind                    | Applies To                  | Status           |
-|------------------------------|-----------------------------|------------------|
-| `rootfs_readonly`            | All except `traditional`    | ❌ Not implemented |
-| `bootc_status_matches_os_release` | Only `bootc` deployment | ❌ Not implemented |
-| `microshift_installed`       | Only `dpu` target           | ❌ Not implemented |
-| `expected_interface_present` | Only `dpu` target           | ❌ Not implemented |
-| `swap_disabled`              | Only `dpu` target           | ❌ Not implemented |
+| Check Kind                    |                    Status           |
+|------------------------------|-------------------------------------|
+| `rootfs_readonly`            |     ✅ Implemented |
+| `swap_disabled`              |      ✅ Implemented |
+| `unit_state`              |      ✅ Implemented |
+| `bootc_status_matches_os_releasment` |❌ Not implemented |
+| `expected_interface_present` |      ❌ Not implemented |
 
 ---
 
