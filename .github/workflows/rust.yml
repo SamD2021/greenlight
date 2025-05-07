@@ -1,0 +1,56 @@
+name: Build Greenlight
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust target
+      run: rustup target add ${{ matrix.target }}
+
+    - name: Install musl cross compilers
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools gcc-aarch64-linux-musl
+
+    - name: Set up cross-compilation config
+      run: |
+        mkdir -p ~/.cargo
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]]; then
+          echo '[target.aarch64-unknown-linux-musl]' >> ~/.cargo/config.toml
+          echo 'linker = "aarch64-linux-musl-gcc"' >> ~/.cargo/config.toml
+        elif [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]]; then
+          echo '[target.x86_64-unknown-linux-musl]' >> ~/.cargo/config.toml
+          echo 'linker = "musl-gcc"' >> ~/.cargo/config.toml
+        fi
+
+    - name: Build for ${{ matrix.target }}
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: greenlight-${{ matrix.target }}
+        path: target/${{ matrix.target }}/release/greenlight-cli
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run tests (native)
+      run: cargo test --verbose
