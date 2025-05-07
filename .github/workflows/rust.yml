@@ -1,16 +1,13 @@
 name: Build Greenlight
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
+    name: Build (${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,28 +15,34 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build for ${{ matrix.target }}
-    - uses: actions-rs/toolchain@v1
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         target: ${{ matrix.target }}
         override: true
-    - uses: actions-rs/cargo@v1
+
+    - name: Install cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: Build with cross
+      uses: actions-rs/cargo@v1
       with:
         command: build
         args: --release --target=${{ matrix.target }}
-        use-cross: ${{ matrix.cross }}
+        use-cross: true
 
-    - name: Upload binary artifact
+    - name: Upload binary
       uses: actions/upload-artifact@v4
       with:
         name: greenlight-${{ matrix.target }}
         path: target/${{ matrix.target }}/release/greenlight-cli
 
   test:
+    name: Run tests (native)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
-    - name: Run tests (native)
+    - name: Run cargo test
       run: cargo test --verbose
