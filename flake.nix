@@ -73,11 +73,16 @@
               pkgsMusl.gcc
               glibc
               markdownlint-cli2
+              mold
+              clang
             ];
 
             env = {
               # Required by rust-analyzer
               RUST_SRC_PATH = "${pkgs.rustToolchain}/lib/rustlib/src/rust/library";
+
+              RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
+              CC = "clang";
             };
           };
         }
