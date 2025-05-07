@@ -92,7 +92,7 @@ fn test_parse_check_kinds() {
             - type: microshift_installed
         wanted:
           checks:
-            - type: expected_interface_present
+            - type: swap_disabled
     "#;
 
     let config: Config = serde_yaml::from_str(yaml).expect("Failed to parse YAML");
@@ -101,7 +101,7 @@ fn test_parse_check_kinds() {
         config.required.checks,
         vec![Check::RootfsReadonly, Check::MicroshiftInstalled]
     );
-    assert_eq!(config.wanted.checks, vec![Check::ExpectedInterfacePresent]);
+    assert_eq!(config.wanted.checks, vec![Check::SwapDisabled]);
 }
 
 #[test]
