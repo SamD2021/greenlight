@@ -5,10 +5,8 @@
 //! for system-level checks and logging behavior.
 
 use crate::{checks::Check, errors::GreenlightError};
-use clap::ValueEnum;
 use serde::Deserialize;
 use serde_yaml::from_str;
-use std::collections::HashSet;
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
@@ -87,7 +85,7 @@ impl System {
 }
 
 /// System-related configuration flags.
-#[derive(Debug, Deserialize, Default, PartialEq, Clone, ValueEnum)]
+#[derive(Debug, Deserialize, Default, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Target {
     DPU,
@@ -95,26 +93,9 @@ pub enum Target {
     #[default]
     Edge,
 }
-impl Target {
-    pub fn default_checks(&self) -> HashSet<Check> {
-        match self {
-            Target::Edge => HashSet::from([Check::RootfsReadonly]),
-            Target::DPU => HashSet::from([
-                Check::RootfsReadonly,
-                Check::MicroshiftInstalled,
-                Check::ExpectedInterfacePresent,
-                Check::SwapDisabled,
-            ]),
-            Target::Automotive => HashSet::from([
-                Check::RootfsReadonly,
-                // Maybe more later
-            ]),
-        }
-    }
-}
 
 /// System
-#[derive(Debug, Deserialize, PartialEq, Clone, ValueEnum)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemArchitecture {
     X86,
