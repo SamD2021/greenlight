@@ -11,7 +11,10 @@ pub enum GreenlightError {
     Io(#[from] io::Error),
 
     #[error("DBus error: {0}")]
-    Dbus(#[from] ZbusError), // <-- add this
+    Dbus(#[from] ZbusError),
+
+    #[error("Netlink error: {0}")]
+    Netlink(#[from] rtnetlink::Error),
 
     #[error("Check failed: {0}")]
     CheckFailed(String),

@@ -2,6 +2,7 @@ use crate::errors::GreenlightError;
 use serde::Deserialize;
 use systemd_zbus::ActiveState;
 
+use crate::checks::network::Interface;
 use crate::checks::rootfs::is_rootfs_readonly;
 use crate::checks::unit::get_unit_state;
 use std::fs::read_to_string;
@@ -12,7 +13,9 @@ pub enum Check {
     RootfsReadonly,
     BootcStatusMatchesOsRelease,
     MicroshiftInstalled,
-    ExpectedInterfacePresent,
+    Interfaces {
+        interfaces: Vec<Interface>,
+    },
     SwapDisabled,
     UnitState {
         unit: String,
