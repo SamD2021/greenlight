@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
+futures = "0.3.31"
 greenlight-lib = { path = "../greenlight-lib" }
 tokio = { version = "1.45.0", features = ["macros", "process"] }
 tracing = "0.1.41"

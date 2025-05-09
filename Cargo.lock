@@ -285,6 +285,7 @@ name = "greenlight-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "futures",
  "greenlight-lib",
  "tokio",
  "tracing",
