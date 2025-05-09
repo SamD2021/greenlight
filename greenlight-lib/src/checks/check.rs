@@ -1,10 +1,9 @@
 use crate::errors::GreenlightError;
 use serde::Deserialize;
-use systemd_zbus::ActiveState;
 
 use crate::checks::network::Interface;
 use crate::checks::rootfs::is_rootfs_readonly;
-use crate::checks::unit::get_unit_state;
+use crate::checks::unit::{get_unit_state, ActiveState};
 use std::fs::read_to_string;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
@@ -13,52 +12,23 @@ pub enum Check {
     RootfsReadonly,
     BootcStatusMatchesOsRelease,
     MicroshiftInstalled,
-    Interfaces {
-        interfaces: Vec<Interface>,
-    },
+    Interfaces { interfaces: Vec<Interface> },
     SwapDisabled,
-    UnitState {
-        unit: String,
-        expected: ExpectedActiveState,
-    },
+    UnitState { unit: String, expected: ActiveState },
 }
 impl Check {
-    pub fn run(&self) -> Result<bool, GreenlightError> {
+    pub async fn run(&self) -> Result<bool, GreenlightError> {
         match self {
-            Check::RootfsReadonly => Ok(is_rootfs_readonly()?),
-
             Check::UnitState {
                 unit: service,
                 expected,
             } => {
-                let actual = get_unit_state(service)?; // returns ActiveState
-                Ok(actual == expected.clone().into())
+                let actual = get_unit_state(service).await?; // returns ActiveState
+                Ok(actual == *expected)
             }
-            Check::SwapDisabled => Ok(is_swap_off()?),
-
+            Check::RootfsReadonly => tokio::task::spawn_blocking(is_rootfs_readonly).await?,
+            Check::SwapDisabled => tokio::task::spawn_blocking(is_swap_off).await?,
             _ => Err(GreenlightError::UnsupportedDeployment),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Eq, Hash)]
-#[serde(rename_all = "lowercase")]
-pub enum ExpectedActiveState {
-    Active,
-    Inactive,
-    Failed,
-    Activating,
-    Deactivating,
-}
-
-impl From<ExpectedActiveState> for ActiveState {
-    fn from(e: ExpectedActiveState) -> Self {
-        match e {
-            ExpectedActiveState::Active => ActiveState::Active,
-            ExpectedActiveState::Inactive => ActiveState::Inactive,
-            ExpectedActiveState::Failed => ActiveState::Failed,
-            ExpectedActiveState::Activating => ActiveState::Activating,
-            ExpectedActiveState::Deactivating => ActiveState::Deactivating,
         }
     }
 }
