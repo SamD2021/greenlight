@@ -7,7 +7,7 @@ It is designed to run early in the boot process and ensure system correctness be
 
 ## ✨ Features
 
-- ✅ YAML-configurable system validation
+- ✅ TOML-configurable system validation
 - 🔜 Deployment-aware checks (`bootc`, `ostree`, `traditional`)
 - ✅ Target-specific logic (`dpu`, `automotive`, `edge`)
 - 🔜 Planned: Greenboot rollback integration
@@ -17,29 +17,32 @@ It is designed to run early in the boot process and ensure system correctness be
 
 ## 🔧 Configuration
 
-Example `greenlight.yaml`:
+Example `config.toml`:
 
-```yaml
-system:
-  deployment: bootc
-  arch: aarch64
+```toml
+[system]
+deployment = "bootc"
+arch = "aarch64"
 
-logging:
-  kind: basic
-  level: debug
+[logging]
+kind = "basic"
+level = "debug"
 
-wanted:
-  checks:
-    - type: rootfs_readonly
-    - type: swap_disabled
-required:
-  checks:
-    - type: unit_state
-      unit: sshd.service
-      expected: active
-    - type: unit_state
-      unit: microshift.service
-      expected: active
+[[wanted.checks]]
+type = "rootfs_readonly"
+
+[[wanted.checks]]
+type = "swap_disabled"
+
+[[required.checks]]
+type = "unit_state"
+unit = "sshd.service"
+expected = "active"
+
+[[required.checks]]
+type = "unit_state"
+unit = "microshift.service"
+expected = "active"
 ```
 
 ---
@@ -78,7 +81,7 @@ greenlight/
 
 All tests live in [`tests/`](./tests). They cover:
 
-- YAML parsing
+- TOML parsing
 - Type-level validation (e.g. `bootc` vs `traditional`)
 - Target enforcement for check applicability
 
@@ -126,9 +129,3 @@ just host-docs
 
 This project is licensed under the **Apache 2.0 License**.  
 See [LICENSE](./LICENSE) for more.
-
----
-
-## ✍️ Author
-
-Samuel Dasilva — [@SamDPenguin](https://github.com/SamD2021)
