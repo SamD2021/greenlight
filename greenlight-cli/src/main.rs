@@ -6,32 +6,44 @@ use greenlight_lib::{checks::Check, config::Config, errors::GreenlightError};
 use std::collections::HashMap;
 use std::{path::PathBuf, process::ExitCode};
 use tracing::{debug, error, info};
-use tracing_subscriber::fmt;
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
-fn main() -> Result<ExitCode, GreenlightError> {
-    fmt::init();
-    info!("Starting Greenlight!");
-
+#[tokio::main]
+async fn main() -> Result<ExitCode, GreenlightError> {
     let args = Args::parse();
 
     let config_path = args
         .config_path
-        .unwrap_or_else(|| PathBuf::from("/etc/greenlight/config.yaml"));
+        .unwrap_or_else(|| PathBuf::from("/etc/greenlight/config.toml"));
 
     let config: Config = Config::from_path(&config_path)?;
 
-    // Merge required and wanted checks, required takes precedence
-    let mut check_map: HashMap<Check, Importance> = HashMap::new();
+    // Map log level from config to `tracing::Level`
+    let level = match config.logging {
+        greenlight_lib::config::Logging::Basic { level, .. } => match level {
+            greenlight_lib::config::LogLevel::Debug => "debug",
+            greenlight_lib::config::LogLevel::Info => "info",
+            greenlight_lib::config::LogLevel::Warn => "warn",
+            greenlight_lib::config::LogLevel::Error => "error",
+        },
+        _ => "info", // fallback
+    };
 
+    // Now initialize tracing with the level from config
+    Subscriber::builder()
+        .with_env_filter(EnvFilter::new(level))
+        .init();
+    info!("Starting Greenlight!");
+
+    // Merge required and wanted checks
+    let mut check_map: HashMap<Check, Importance> = HashMap::new();
     for check in config.wanted.checks {
         check_map.entry(check).or_insert(Importance::Wanted);
     }
-
     for check in config.required.checks {
-        check_map.insert(check, Importance::Required); // Overwrites wanted
+        check_map.insert(check, Importance::Required);
     }
 
-    // Filter checks based on the `--only` argument
     let checks_to_run: Vec<(Check, Importance)> = check_map
         .into_iter()
         .filter(|(_, importance)| match args.only {
@@ -39,6 +51,7 @@ fn main() -> Result<ExitCode, GreenlightError> {
             _ => *importance == args.only,
         })
         .collect();
+
     debug!(
         "Total checks to run ({}): {:?}",
         checks_to_run.len(),
@@ -49,7 +62,7 @@ fn main() -> Result<ExitCode, GreenlightError> {
 
     for (check, importance) in checks_to_run {
         info!("Running check: {:?}", check);
-        match check.run() {
+        match check.run().await {
             Ok(true) => info!("✅ Check passed: {:?}", check),
             Ok(false) => match importance {
                 Importance::Required => {
@@ -72,7 +85,6 @@ fn main() -> Result<ExitCode, GreenlightError> {
         }
     }
 
-    // Fail at the end only if a wanted check failed and we didn't already return
     if any_wanted_failed {
         return Err(GreenlightError::CheckFailed(
             "At least one wanted check failed".to_string(),
