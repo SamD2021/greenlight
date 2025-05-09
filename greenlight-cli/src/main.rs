@@ -2,10 +2,12 @@ mod cli;
 
 use clap::Parser;
 use cli::{Args, Importance};
+use futures::future::join_all;
 use greenlight_lib::{checks::Check, config::Config, errors::GreenlightError};
 use std::collections::HashMap;
 use std::{path::PathBuf, process::ExitCode};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, span, Level};
+use tracing_futures::Instrument;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 #[tokio::main]
@@ -58,11 +60,20 @@ async fn main() -> Result<ExitCode, GreenlightError> {
         checks_to_run
     );
 
+    let results = join_all(checks_to_run.into_iter().map(|(check, importance)| {
+        let span = span!(Level::INFO, "check", check = ?check);
+        async move {
+            info!("Running check");
+            let result = check.run().await;
+            (check, importance, result)
+        }
+        .instrument(span)
+    }))
+    .await;
     let mut any_wanted_failed = false;
 
-    for (check, importance) in checks_to_run {
-        info!("Running check: {:?}", check);
-        match check.run().await {
+    for (check, importance, result) in results {
+        match result {
             Ok(true) => info!("✅ Check passed: {:?}", check),
             Ok(false) => match importance {
                 Importance::Required => {
@@ -84,7 +95,6 @@ async fn main() -> Result<ExitCode, GreenlightError> {
             }
         }
     }
-
     if any_wanted_failed {
         return Err(GreenlightError::CheckFailed(
             "At least one wanted check failed".to_string(),
