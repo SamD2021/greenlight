@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::checks::network::Interface;
 use crate::checks::rootfs::is_rootfs_readonly;
-use crate::checks::unit::{get_unit_state, ActiveState};
+use crate::checks::unit::{wait_for_unit, ActiveState};
 use std::fs::read_to_string;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
@@ -12,9 +12,16 @@ pub enum Check {
     RootfsReadonly,
     BootcStatusMatchesOsRelease,
     MicroshiftInstalled,
-    Interfaces { interfaces: Vec<Interface> },
+    Interfaces {
+        interfaces: Vec<Interface>,
+    },
     SwapDisabled,
-    UnitState { unit: String, expected: ActiveState },
+    UnitState {
+        unit: String,
+        expected: ActiveState,
+        #[serde(default)]
+        timeout: Option<u64>, // in seconds
+    },
 }
 impl Check {
     pub async fn run(&self) -> Result<bool, GreenlightError> {
@@ -22,12 +29,31 @@ impl Check {
             Check::UnitState {
                 unit: service,
                 expected,
+                timeout,
             } => {
-                let actual = get_unit_state(service).await?; // returns ActiveState
-                Ok(actual == *expected)
+                let result = wait_for_unit(service, expected.clone(), *timeout).await;
+                match result {
+                    Ok(true) => Ok(true),
+                    Ok(false) => {
+                        tracing::error!(
+                            "Unit '{}' did not reach expected state '{:?}' within {:?} seconds",
+                            service,
+                            expected,
+                            timeout.unwrap_or(0)
+                        );
+                        Ok(false)
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to check unit state for '{}': {}", service, e);
+                        Err(e)
+                    }
+                }
             }
+
             Check::RootfsReadonly => tokio::task::spawn_blocking(is_rootfs_readonly).await?,
+
             Check::SwapDisabled => tokio::task::spawn_blocking(is_swap_off).await?,
+
             _ => Err(GreenlightError::UnsupportedDeployment),
         }
     }
