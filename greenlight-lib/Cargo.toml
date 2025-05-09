@@ -8,9 +8,7 @@ futures = "0.3.31"
 nix = { version = "0.29.0", features = ["fs"] }
 rtnetlink = "0.16.0"
 serde = { version = "1.0", features = ["derive"] }
-systemd-zbus = "5.2.0"
 thiserror = "2.0.12"
 tokio = { version = "1.45.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.8.22"
 tracing = "0.1.41"
-zbus = "5.6.0"
