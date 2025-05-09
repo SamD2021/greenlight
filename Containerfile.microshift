@@ -1,46 +1,57 @@
 FROM registry.redhat.io/openshift4/microshift-bootc-rhel9:99c940abcf60ef5fec9571c36132ab07984372d4af683e5429cfa3b195757d8e
 
-
+# Build arguments
 ARG SSH_KEY
 ARG USER_PASSWD
-RUN if [ -z "${USER_PASSWD}" ] ; then \
+ARG BUILD_TARGET
+
+# Fail early if USER_PASSWD is missing
+RUN if [ -z "${USER_PASSWD}" ]; then \
         echo USER_PASSWD is a mandatory build argument && exit 1 ; \
     fi
-# hadolint ignore=DL4006
+
+# Create default user and set up SSH access
 RUN useradd -m -d /var/home/redhat -G wheel redhat && \
-    echo "redhat:${USER_PASSWD}" | chpasswd && mkdir -p /var/home/redhat/.ssh && echo "${SSH_KEY}" >> /var/home/redhat/.ssh/authorized_keys
+    echo "redhat:${USER_PASSWD}" | chpasswd && \
+    mkdir -p /var/home/redhat/.ssh && \
+    echo "${SSH_KEY}" >> /var/home/redhat/.ssh/authorized_keys
 
+# Copy binary from build output based on target
+COPY target/${BUILD_TARGET}/release/greenlight-cli /usr/bin/greenlight
+RUN chmod +x /usr/bin/greenlight
 
-COPY target/x86_64-unknown-linux-musl/release/greenlight-cli /usr/bin/greenlight
+# Copy config
 RUN mkdir -p /etc/greenlight/
-COPY config.yaml /etc/greenlight/
+COPY config.toml /etc/greenlight/
 
-# Permissions and symlinks (optional based on your needs)
-RUN chmod +x /usr/bin/greenlight 
-
+# Required Health Check with retry logic
 RUN cat > /usr/lib/systemd/system/greenlight-required.service <<'EOF'
 [Unit]
 Description=Custom Required Health Check
-After=multi-user.target
+After=basic.target
 Before=boot-complete.target
 OnFailure=redboot.target
 OnFailureJobMode=fail
+StartLimitBurst=3
+StartLimitIntervalSec=30s
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/greenlight --only required
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 RequiredBy=boot-complete.target
-WantedBy=multi-user.target
 EOF
 
 RUN systemctl enable greenlight-required
 
+# Wanted Health Check (no retry)
 RUN cat > /usr/lib/systemd/system/greenlight-wanted.service <<'EOF'
 [Unit]
 Description=Custom Wanted Health Check
-After=multi-user.target
+After=basic.target
 Before=boot-complete.target
 
 [Service]
@@ -49,20 +60,18 @@ ExecStart=/usr/bin/greenlight --only wanted
 
 [Install]
 WantedBy=boot-complete.target
-WantedBy=multi-user.target
 EOF
 
 RUN systemctl enable greenlight-wanted
 
+# Disable default swap units
 RUN mkdir -p /etc/systemd/system/dev-zram0.swap && \
-    ln -sf /dev/null /etc/systemd/system/dev-zram0.swap &&\
-    ln -sf /dev/null /etc/systemd/system/swap.target 
+    ln -sf /dev/null /etc/systemd/system/dev-zram0.swap && \
+    ln -sf /dev/null /etc/systemd/system/swap.target
 
+# Open vSwitch ownership fix
 RUN mkdir -p /usr/lib/systemd/system/ovsdb-server.service.d && \
     cat > /usr/lib/systemd/system/ovsdb-server.service.d/microshift-ovsdb-ownership.conf <<'EOF'
-# The openvswitch database files must be owned by the appropriate user and its
-# primary group. Note that the user and its group may be overwritten too, so
-# they need to be recreated in this case.
 [Service]
 ExecStartPre=/bin/sh -c '/bin/getent passwd openvswitch >/dev/null || useradd -r openvswitch'
 ExecStartPre=/bin/sh -c '/bin/getent group hugetlbfs >/dev/null || groupadd -r hugetlbfs'
