@@ -1,6 +1,5 @@
 use std::io;
 use thiserror::Error;
-use zbus::Error as ZbusError;
 
 #[derive(Error, Debug)]
 pub enum GreenlightError {
@@ -10,11 +9,11 @@ pub enum GreenlightError {
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
 
-    #[error("DBus error: {0}")]
-    Dbus(#[from] ZbusError),
-
     #[error("Netlink error: {0}")]
     Netlink(#[from] rtnetlink::Error),
+
+    #[error("Thread join error: {0}")]
+    Join(#[from] tokio::task::JoinError),
 
     #[error("Check failed: {0}")]
     CheckFailed(String),
