@@ -6,11 +6,11 @@
 
 use crate::{checks::Check, errors::GreenlightError};
 use serde::Deserialize;
-use serde_yaml::from_str;
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use toml::from_str;
 
 /// Top-level Greenlight configuration.
 #[derive(Deserialize, Debug)]
