@@ -1,18 +1,47 @@
 use crate::errors::GreenlightError;
-use systemd_zbus::{ActiveState, ManagerProxyBlocking, UnitProxyBlocking};
-use zbus::blocking::Connection;
+use serde::Deserialize;
+use tokio::process::Command;
 
-fn get_unit(unit_name: &str) -> Result<UnitProxyBlocking, GreenlightError> {
-    let connection = Connection::system()?;
-    let proxy = ManagerProxyBlocking::new(&connection)?;
-    let unit_path = proxy.get_unit(unit_name)?;
-    let unit = UnitProxyBlocking::builder(&connection)
-        .path(unit_path)?
-        .build()?;
-    Ok(unit)
+#[derive(Debug, Clone, PartialEq, Deserialize, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum ActiveState {
+    Active,
+    Inactive,
+    Failed,
+    Activating,
+    Deactivating,
+    Unknown,
 }
-pub fn get_unit_state(unit_name: &str) -> Result<ActiveState, GreenlightError> {
-    let unit = get_unit(unit_name)?;
-    let active_state = unit.active_state()?;
-    Ok(active_state)
+
+pub async fn get_unit_state(unit_name: &str) -> Result<ActiveState, GreenlightError> {
+    let output = Command::new("systemctl")
+        .arg("is-active")
+        .arg(unit_name)
+        .output()
+        .await
+        .map_err(GreenlightError::Io)?;
+
+    // systemctl returns non-zero for inactive, but that's not an error here
+    let stdout = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .to_lowercase();
+
+    let state = match stdout.as_str() {
+        "active" => ActiveState::Active,
+        "inactive" => ActiveState::Inactive,
+        "failed" => ActiveState::Failed,
+        "activating" => ActiveState::Activating,
+        "deactivating" => ActiveState::Deactivating,
+        "unknown" | "" => ActiveState::Unknown,
+        _ => {
+            tracing::warn!(
+                "Unexpected state '{}' returned by systemctl for unit '{}'",
+                stdout,
+                unit_name
+            );
+            ActiveState::Unknown
+        }
+    };
+
+    Ok(state)
 }
