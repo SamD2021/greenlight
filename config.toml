@@ -1,0 +1,23 @@
+[system]
+deployment = "bootc"
+arch = "aarch64"
+
+[logging]
+kind = "basic"
+level = "debug"
+
+[[required.checks]]
+type = "rootfs_readonly"
+
+[[required.checks]]
+type = "swap_disabled"
+
+[[wanted.checks]]
+type = "unit_state"
+unit = "sshd.service"
+expected = "active"
+
+[[wanted.checks]]
+type = "unit_state"
+unit = "microshift.service"
+expected = "active"
