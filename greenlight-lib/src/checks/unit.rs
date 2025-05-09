@@ -1,6 +1,7 @@
 use crate::errors::GreenlightError;
 use serde::Deserialize;
 use tokio::process::Command;
+use tokio::time::{sleep, timeout, Duration};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -44,4 +45,29 @@ pub async fn get_unit_state(unit_name: &str) -> Result<ActiveState, GreenlightEr
     };
 
     Ok(state)
+}
+
+pub async fn wait_for_unit(
+    unit: &str,
+    expected: ActiveState,
+    timeout_secs: Option<u64>,
+) -> Result<bool, GreenlightError> {
+    let wait_duration = Duration::from_secs(timeout_secs.unwrap_or(0));
+
+    let result = timeout(wait_duration, async {
+        loop {
+            let current = get_unit_state(unit).await?;
+            if current == expected {
+                return Ok(true);
+            }
+            sleep(Duration::from_secs(1)).await;
+        }
+    })
+    .await;
+
+    match result {
+        Ok(Ok(ok)) => Ok(ok),
+        Ok(Err(e)) => Err(e),
+        Err(_) => Ok(false), // Timed out
+    }
 }
