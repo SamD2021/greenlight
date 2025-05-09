@@ -19,8 +19,9 @@ test-bootc:
     cargo test -- --ignored
 
 # ─── Bootc VM Testing Image ─────────────────────────────────────────────────────
-bootc-build ssh-key user-passwd:
+bootc-build ssh-key user-passwd no_cache_flag="":
     {{container-cmd}} build \
+        {{no_cache_flag}} \
         --build-arg SSH_KEY='{{ssh-key}}' \
         --build-arg USER_PASSWD='{{user-passwd}}' \
         --build-arg BUILD_TARGET='{{target}}' \
