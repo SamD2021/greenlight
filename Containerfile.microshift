@@ -1,4 +1,5 @@
-FROM registry.redhat.io/openshift4/microshift-bootc-rhel9:99c940abcf60ef5fec9571c36132ab07984372d4af683e5429cfa3b195757d8e
+FROM rhel-registered as registered
+FROM registry.redhat.io/rhel9/rhel-bootc:9.5
 
 # Build arguments
 ARG SSH_KEY
@@ -14,7 +15,52 @@ RUN if [ -z "${USER_PASSWD}" ]; then \
 RUN useradd -m -d /var/home/redhat -G wheel redhat && \
     echo "redhat:${USER_PASSWD}" | chpasswd && \
     mkdir -p /var/home/redhat/.ssh && \
-    echo "${SSH_KEY}" >> /var/home/redhat/.ssh/authorized_keys
+    echo "${SSH_KEY}" >> /var/home/redhat/.ssh/authorized_keys 
+
+COPY --from=registered /etc/pki/entitlement /etc/pki/entitlement
+COPY --from=registered /etc/pki/consumer /etc/pki/consumer
+COPY --from=registered /etc/rhsm/rhsm.conf /etc/rhsm/rhsm.conf
+COPY --from=registered /etc/rhsm/ca /etc/rhsm/ca
+
+ARG USHIFT_VER=4.18
+# hadolint ignore=SC1091
+RUN . /etc/os-release && dnf upgrade -y --releasever="${VERSION_ID}" && \
+    dnf config-manager \
+        --set-enabled "rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms" \
+        --set-enabled "fast-datapath-for-rhel-9-$(uname -m)-rpms" \
+        --set-enabled codeready-builder-for-rhel-9-$(arch)-rpms && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm firewalld jq microshift microshift-release-info && \
+    systemctl enable microshift && \
+    dnf clean all
+
+# Mandatory firewall configuration
+RUN firewall-offline-cmd --zone=public --add-port=22/tcp && \
+    firewall-offline-cmd --zone=trusted --add-source=10.42.0.0/16 && \
+    firewall-offline-cmd --zone=trusted --add-source=169.254.169.1 && \
+    firewall-offline-cmd --zone=trusted --add-source=fd01::/48
+    # Application-specific firewall configuration
+RUN firewall-offline-cmd --zone=public --add-port=80/tcp && \
+    firewall-offline-cmd --zone=public --add-port=443/tcp && \
+    firewall-offline-cmd --zone=public --add-port=30000-32767/tcp && \
+    firewall-offline-cmd --zone=public --add-port=30000-32767/udp
+
+# Create a systemd unit to recursively make the root filesystem subtree
+# shared as required by OVN images
+RUN cat > /usr/lib/systemd/system/microshift-make-rshared.service <<'EOF'
+[Unit]
+Description=Make root filesystem shared
+Before=microshift.service
+ConditionVirtualization=container
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount --make-rshared /
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# hadolint ignore=DL3059
+RUN systemctl enable microshift-make-rshared.service
+
 
 # Copy binary from build output based on target
 COPY target/${BUILD_TARGET}/release/greenlight-cli /usr/bin/greenlight
@@ -32,14 +78,11 @@ After=basic.target
 Before=boot-complete.target
 OnFailure=redboot.target
 OnFailureJobMode=fail
-StartLimitBurst=3
-StartLimitIntervalSec=30s
 
 [Service]
 Type=oneshot
+ExecStartPre=/bin/sleep 10
 ExecStart=/usr/bin/greenlight --only required
-Restart=on-failure
-RestartSec=5s
 
 [Install]
 RequiredBy=boot-complete.target
