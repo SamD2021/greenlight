@@ -52,22 +52,29 @@ pub async fn wait_for_unit(
     expected: ActiveState,
     timeout_secs: Option<u64>,
 ) -> Result<bool, GreenlightError> {
-    let wait_duration = Duration::from_secs(timeout_secs.unwrap_or(0));
-
-    let result = timeout(wait_duration, async {
-        loop {
+    match timeout_secs {
+        Some(0) | None => {
             let current = get_unit_state(unit).await?;
-            if current == expected {
-                return Ok(true);
-            }
-            sleep(Duration::from_secs(1)).await;
+            Ok(current == expected)
         }
-    })
-    .await;
+        Some(secs) => {
+            let wait_duration = Duration::from_secs(secs);
+            let result = timeout(wait_duration, async {
+                loop {
+                    let current = get_unit_state(unit).await?;
+                    if current == expected {
+                        return Ok(true);
+                    }
+                    sleep(Duration::from_secs(1)).await;
+                }
+            })
+            .await;
 
-    match result {
-        Ok(Ok(ok)) => Ok(ok),
-        Ok(Err(e)) => Err(e),
-        Err(_) => Ok(false), // Timed out
+            match result {
+                Ok(Ok(ok)) => Ok(ok),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Ok(false), // Timed out
+            }
+        }
     }
 }
