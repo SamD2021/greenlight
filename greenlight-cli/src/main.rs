@@ -10,6 +10,9 @@ use tracing::{debug, error, info, span, Level};
 use tracing_futures::Instrument;
 use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
+#[cfg(feature = "plugins")]
+use greenlight_lib::plugins::run_plugins_from;
+
 #[tokio::main]
 async fn main() -> Result<ExitCode, GreenlightError> {
     let args = Args::parse();
@@ -30,12 +33,48 @@ async fn main() -> Result<ExitCode, GreenlightError> {
         },
         _ => "info", // fallback
     };
+    // Apply the level only to Greenlight crates
+    let scoped_filter = format!(
+        "greenlight={0},greenlight_cli={0},greenlight_lib={0}",
+        level
+    );
 
     // Now initialize tracing with the level from config
     Subscriber::builder()
-        .with_env_filter(EnvFilter::new(level))
+        .with_env_filter(EnvFilter::new(scoped_filter))
         .init();
     info!("Starting Greenlight!");
+
+    #[cfg(feature = "plugins")]
+    {
+        let plugin_dir = args
+            .plugin_dir
+            .unwrap_or_else(|| PathBuf::from("/etc/greenlight/plugins.d"));
+        if plugin_dir.exists() {
+            use serde_json::Value;
+
+            info!("Running plugins from: {}", plugin_dir.display());
+            let plugin_results: Vec<Value> = run_plugins_from(&plugin_dir);
+
+            for result in plugin_results {
+                match result.get("status").and_then(|s| s.as_str()) {
+                    Some("success") => info!("✅ Plugin passed: {result}"),
+                    Some("fail") => {
+                        error!("❌ Plugin failed: {result}");
+                        return Err(GreenlightError::CheckFailed(
+                            "A plugin returned failure".to_string(),
+                        ));
+                    }
+                    _ => {
+                        error!("⚠️  Plugin result unrecognized: {result}");
+                        return Err(GreenlightError::CheckFailed(
+                            "A plugin produced an invalid result".to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
 
     // Merge required and wanted checks
     let mut check_map: HashMap<Check, Importance> = HashMap::new();

@@ -79,10 +79,26 @@
 
             env = {
               # Required by rust-analyzer
+              CARGO_TARGET_DIR = "target";
               RUST_SRC_PATH = "${pkgs.rustToolchain}/lib/rustlib/src/rust/library";
-
-              RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
+              RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold";
               CC = "clang";
+            };
+          };
+          plugin = pkgs.mkShell {
+            packages = with pkgs; [
+              rustToolchain
+              go
+              gopls
+              gotools
+              golangci-lint
+              extism-cli
+              wasm-tools
+            ];
+
+            env = {
+              CARGO_TARGET_DIR = "target";
+              RUSTFLAGS = "-C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
             };
           };
         }

@@ -67,8 +67,8 @@ COPY target/${BUILD_TARGET}/release/greenlight-cli /usr/bin/greenlight
 RUN chmod +x /usr/bin/greenlight
 
 # Copy config
-RUN mkdir -p /etc/greenlight/
 COPY config.toml /etc/greenlight/
+COPY ./example-plugins/go/plugin/*.wasm /etc/greenlight/plugins.d/
 
 # Required Health Check with retry logic
 RUN cat > /usr/lib/systemd/system/greenlight-required.service <<'EOF'

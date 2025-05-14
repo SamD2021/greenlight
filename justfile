@@ -5,8 +5,8 @@ runtime-image := env("GREENLIGHT_IMAGE", "localhost/greenlight")
 target := env("BUILD_TARGET", "x86_64-unknown-linux-musl")
 
 # ─── Build statically linked binary ─────────────────────────────────────────────
-build:
-    cargo build --release --target {{target}}
+build *EXTRA:
+    cargo build --release --target {{target}} {{EXTRA}}
 
 cross-build:
     cross build --release --target {{target}}

@@ -6,8 +6,13 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 futures = "0.3.31"
-greenlight-lib = { path = "../greenlight-lib" }
+greenlight-lib = { path = "../greenlight-lib", default-features = false, features = ["plugins"] }
 tokio = { version = "1.45.0", features = ["macros", "process"] }
 tracing = "0.1.41"
 tracing-futures = "0.2.5"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+serde_json = {version = "1.0.140", optional = true}
+
+[features]
+default = []
+plugins = ["greenlight-lib/plugins", "serde_json"]
