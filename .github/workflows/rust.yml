@@ -97,3 +97,29 @@ jobs:
         name: greenlight-rpm-x86_64
         path: /github/home/rpmbuild/RPMS/x86_64/*.rpm
 
+  publish:
+    name: Publish Pre-release
+    runs-on: ubuntu-latest
+    needs: package
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download RPM artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: greenlight-rpm-x86_64
+        path: ./dist
+
+    - name: Create Pre-release
+      uses: softprops/action-gh-release@v2
+      with:
+        prerelease: true
+        tag_name: "build-${{ github.sha }}"
+        name: "Greenlight Pre-release (${{ github.sha }})"
+        body: |
+          Automated build from main.
+        files: ./dist/*.rpm
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
