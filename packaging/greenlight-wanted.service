@@ -1,0 +1,10 @@
+[Unit]
+Description=Greenlight wanted healthcheck
+Before=boot-complete.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/greenlight --only wanted
+
+[Install]
+WantedBy=boot-complete.target
