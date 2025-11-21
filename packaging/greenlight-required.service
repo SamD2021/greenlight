@@ -1,0 +1,14 @@
+[Unit]
+Description=Greenlight required healthcheck
+After=basic.target
+Before=boot-complete.target
+OnFailure=redboot.target
+OnFailureJobMode=fail
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/greenlight --only required
+
+[Install]
+RequiredBy=boot-complete.target

@@ -1,0 +1,8 @@
+[system]
+deployment = "bootc"
+arch = "x86"
+
+[logging]
+kind = "basic"
+level = "info"
+
